@@ -1,0 +1,78 @@
+name: twitch-fr-analyze
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Type d'analyse"
+        type: choice
+        required: true
+        default: classement
+        options:
+          - classement
+          - creneaux
+          - heatmap
+      categorie:
+        description: "Catégorie exacte — uniquement pour le mode heatmap (ex: Just Chatting)"
+        type: string
+        required: false
+        default: ""
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install --quiet pandas
+
+      - name: Analyse
+        env:
+          MODE: ${{ inputs.mode }}
+          CAT: ${{ inputs.categorie }}
+        run: |
+          set -o pipefail
+          case "$MODE" in
+            classement)
+              python analyze.py | tee rapport.txt
+              ;;
+            creneaux)
+              python analyze.py --best | tee rapport.txt
+              ;;
+            heatmap)
+              if [ -z "$CAT" ]; then
+                echo "Mode heatmap : il faut remplir le champ 'categorie'."
+                exit 1
+              fi
+              python analyze.py "$CAT" | tee rapport.txt
+              ;;
+          esac
+
+      - name: Affichage du rapport
+        if: always()
+        env:
+          MODE: ${{ inputs.mode }}
+        run: |
+          if [ ! -f rapport.txt ]; then
+            echo "Aucun rapport généré (voir le log de l'étape Analyse)." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          {
+            echo "### Rapport — $MODE"
+            echo '```'
+            cat rapport.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Rapport téléchargeable
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport-analyse
+          path: rapport.txt
+          if-no-files-found: ignore
