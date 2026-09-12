@@ -1,8 +1,8 @@
 name: twitch-fr-collect
 
 on:
-  schedule:
-    - cron: "13,43 * * * *"   # toutes les 30 min (UTC). GitHub peut décaler de quelques minutes.
+  #schedule:
+  #- cron: "13,43 * * * *"   # toutes les 30 min (UTC). GitHub peut décaler de quelques minutes.
   workflow_dispatch:          # bouton "Run workflow" pour tester à la main
 
 concurrency:
